@@ -5,21 +5,14 @@ You need to have `cuda 11.0` installed. You might have problems setting-up the e
 
 The easiest is to set-up a conda virtual environment using `vorecem_env.yaml` file from the repository.
 ```
-conda env create --prefix <path_to_environment>
+conda env create --prefix <path_to_environment> --file=<path_to_conda_env.yaml_file>
 ```
 Once activating the environment:
 ```
 conda activate <path_to_environment>
 ```
-you need to install additional packages using `pip` command (listed in requirements.txt):
+you need to install additional packages using `pip` command:
 ```
-pip install torch==1.7.1
-pip install torchvision==0.8.2
-pip install wandb==0.10.32
-pip install pytorch-lightning==1.2.5
-pip install memcnn==1.5.0
-pip install torchvtk==0.4.5
-
 pip install git+https://github.com/aliutkus/torchinterp1d.git@master#egg=torchinterp1d
 pip install git+https://github.com/lessw2020/Ranger-Deep-Learning-Optimizer@master#egg=ranger
 ```
@@ -50,16 +43,16 @@ segmentation/lmodule_transfer_gpus.py    # Script with the Lightning Module. Imp
 ```
 
 ### Support scripts and files
-Our volumes were to big to use them for training as a whole. We needed to split them int 512x512x\[227-500\] chunks.
+Our volumes were to big to use them for training as a whole. We needed to split them into chunk of resolution 512x512x\[227-500\].
 ```
-segmentation/split_chunk.py              # Script for splitting data into 9 chunks
-segmentation/normalize_data.py           # Script for normalizing foreground - background data
+segmentation/split.py                       # Script for splitting data into 9 chunks
+segmentation/normalize_data.py              # Script for normalizing foreground - background data
 segmentation/normalize_data_all_channels.py # Script for normalizing many classes data
 
-segmentation/stitching.py                # Script for stiching foreground - background data
-segmentation/stitching_all_class.py      # Script for stiching many classes data
+segmentation/stitch.py                      # Script for stiching foreground - background data
+segmentation/stitch_all_channels.py         # Script for stiching many classes data
 
-requirements.txt            # Docs listing the necessary py packages to run these scripts.
+conda_env.yaml                              # Docs listing the necessary py packages to run these scripts.
 ```
 
 ## Set up and running scripts
@@ -100,6 +93,7 @@ python test_transfer.py <path_to_test_data_folder> --checkpoint <path_to_checkpi
 The script stitches prediction chunks into output volumes
 ```
 python ./stitch.py <input_file_name_prefix> <prediction_chunks_folder_path> <output_folder_path> <splits_json_file_path> <tile_locations_file_name_prefix> <output_file_name_prefix>
+python ./stitch_all_channels.py <input_file_name_prefix> <prediction_chunks_folder_path> <output_folder_path> <splits_json_file_path> <tile_locations_file_name_prefix> <output_file_name_prefix>
 ```
 
 ## Pretrained models
