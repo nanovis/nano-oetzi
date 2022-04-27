@@ -1,0 +1,121 @@
+import os
+import fnmatch
+import re
+from pathlib import Path
+from argparse import ArgumentParser
+
+if __name__=='__main__':
+    parser = ArgumentParser('Run inference on volume with depth <= 512')
+    parser.add_argument('input_file_path', type=str, help='MRC file or JSON volume header file')
+    parser.add_argument('output_dir_path', type=str, help='Output path for inference')
+    parser.add_argument('-v', type=bool, default=True, help='Output the process status.')
+    parser.add_argument('-c', type=bool, default=False, help='Clean the output directory and remove temporary files.')
+    args = parser.parse_args()
+    
+    output_dir_path = Path(args.output_dir_path)
+    # Prepare tmp directories
+    if args.v:
+        print('Preparing temporary directories')
+    if not output_dir_path.exists(): os.mkdir(output_dir_path)
+
+    output_splits_dir_path = Path(output_dir_path, 'splits')
+    if not output_splits_dir_path.exists(): os.mkdir(output_splits_dir_path)
+    # print(output_splits_dir_path)
+
+    output_norm_splits_dir_path = Path(output_splits_dir_path, 'norm_splits')
+    if not output_norm_splits_dir_path.exists(): os.mkdir(output_norm_splits_dir_path)
+    # print(output_norm_splits_dir_path)
+
+    output_predictions_dir_path = Path(output_splits_dir_path, 'predictions')
+    if not output_predictions_dir_path.exists(): os.mkdir(output_predictions_dir_path)
+    # print(output_predictions_dir_path)
+
+
+    # Split volume into chunks of depth<=512 x 512 x 512
+    if args.v:
+        print('Spliting the volume into chunks.')
+    result = os.system('python ./split.py ' + args.input_file_path + ' ' + str(output_splits_dir_path))
+    if result != 0:
+        print('Error: Failed to split volume.')
+        exit(1)
+
+    
+    # Check and normalize the chunk files
+    if args.v:
+        print('Checking and normalizing the chunks.')
+    result = os.system('python ./check_data.py ' + str(output_splits_dir_path) + ' ' + str(output_norm_splits_dir_path))
+    if result != 0:
+        print('Error: Failed to check and normalize the chunks.')
+        exit(1)
+
+
+    # Run inference on chunks
+    if args.v:
+        print('Running inference.')
+    files = sorted(os.listdir(output_norm_splits_dir_path))
+    for f in files:
+        result = os.system('python ./test_transfer.py ' + str(output_norm_splits_dir_path) + '/' + f + ' --checkpoint ../models/model-epoch-020_edit.ckpt --output_path ' + str(output_predictions_dir_path))
+        if result != 0:
+            print('Error: Failed to run inference on chunk ' + f)
+            exit(1)
+
+    
+    # Rename files to match the needed name pattern
+    if args.v:
+        print('Renaming the chunk files to match the needed name pattern.')
+    files = sorted(os.listdir(output_predictions_dir_path))
+    selected_files = []
+    for f in files:
+        if fnmatch.fnmatch(f, '*0*'):
+            selected_files.append(f)
+    
+    f = selected_files[0]
+    v = re.search(r"0", f)
+    input_pattern = f[:v.start()] + '?' + f[v.start()+1:]
+    output_pattern = f[:v.start()] + f[v.start()+2:-3] + '_?.pt'
+    result = os.system('python ./rename_files.py ' + str(output_predictions_dir_path) + '/ ' + input_pattern + ' ' + output_pattern)
+    if result != 0:
+        print('Error: Failed to rename the chunk files.')
+        exit(1)
+
+    f = selected_files[1]
+    v = re.search(r"0", f)
+    input_pattern = f[:v.start()] + '?' + f[v.start()+1:]
+    output_pattern = f[:v.start()] + f[v.start()+2:-3] + '_?.pt'
+    result = os.system('python ./rename_files.py ' + str(output_predictions_dir_path) + '/ ' + input_pattern + ' ' + output_pattern)
+    if result != 0:
+        print('Error: Failed to rename the chunk files.')
+        exit(1)
+
+
+    # Stitch chunks into output volumes
+    if args.v:
+        print('Stitching prediction chunks into output files.')
+    stitch_prefix = 'split_norm_predictions_'
+    splits_json_path = str(output_splits_dir_path) + '/splits.json'
+    tile_locations_prefix = str(output_predictions_dir_path) + '/split_norm_tile_locations_'
+    output_name = os.path.basename(args.input_file_path)
+    output_files_prefix = output_name[:-4] + '_predictions'
+    result = os.system('python ./stitch.py ' + stitch_prefix + ' ' + str(output_predictions_dir_path) + '/ ' + str(output_dir_path) + '/ ' + splits_json_path + ' ' + tile_locations_prefix + ' ' + output_files_prefix)
+    if result != 0:
+        print('Error: Failed to stitch prediction chunks into output files.')
+        exit(1)
+
+
+    # Create JSON header for output volume files
+    if args.v:
+        print('Creating JSON header files for output volumes.')
+    
+    files = sorted(os.listdir(output_dir_path))
+    for f in files:
+        print(f)
+        if fnmatch.fnmatch(f, '*.raw'):
+            os.system('python ./create_json_header.py ' + str(args.input_file_path) + ' ' + str(output_dir_path) + '/' + str(f))
+
+    # Clean up
+    if args.v and args.c:
+        print('Cleaning up the temporary files.')
+    result = os.system('rm -rf ' + str(output_splits_dir_path))
+    if result != 0:
+        print('Error: Failed to clean up the temporary files.')
+        exit(1)
