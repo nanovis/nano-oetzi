@@ -101,3 +101,16 @@ python ./stitch_all_channels.py <input_file_name_prefix> <prediction_chunks_fold
 models/foreground_background_model.ckpt: Pretrained model for foreground-background segmentation
 models/four_classes_model.ckpt: Pretrained model for four classes segmentation
 ```
+
+## Sample raw microscopy input data
+An example raw input data volume is available in the Electron Microscopy Data Bank under ID EMD-33297.  
+https://www.ebi.ac.uk/emdb/EMD-33297
+
+
+## Sample annotation and prediction data
+The manual annotation data for the above volume and the 4-class segmentation data is available in KAUST Repository.  
+[Waiting for KAUST repository to publish the data.]
+
+## Visualization
+The visualization pipeline is awailable as a WebGPU implementation in a separate repository.  
+https://github.com/nanovis/nano-oetzi-webgpu
