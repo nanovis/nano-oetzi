@@ -112,5 +112,5 @@ The manual annotation data for the above volume and the 4-class segmentation dat
 [Waiting for KAUST repository to publish the data.]
 
 ## Visualization
-The visualization pipeline is awailable as a WebGPU implementation in a separate repository.  
+The visualization pipeline is available as a WebGPU implementation in a separate repository.  
 https://github.com/nanovis/nano-oetzi-webgpu
