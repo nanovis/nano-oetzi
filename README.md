@@ -109,7 +109,7 @@ https://www.ebi.ac.uk/emdb/EMD-33297
 
 ## Sample annotation and prediction data
 The manual annotation data for the above volume and the 4-class segmentation data is available in KAUST Repository.  
-[Waiting for KAUST repository to publish the data.]
+https://repository.kaust.edu.sa/handle/10754/676709
 
 ## Visualization
 The visualization pipeline is available as a WebGPU implementation in a separate repository.  
