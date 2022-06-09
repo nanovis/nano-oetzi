@@ -1,4 +1,4 @@
-# Nano-Otzi: Cryo-Electron Tomography Visualization Guided by Learned Segmentations
+# Finding Nano-Ötzi: Cryo-Electron Tomography Visualization Guided by Learned Segmentation
 This repository contains code for training and inference of volumes with use of deep segmentation model presented in Nano-Oetzi paper.
 
 You need to have `cuda 11.0` installed. You might have problems setting-up the environment with different versions.
