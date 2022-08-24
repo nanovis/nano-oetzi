@@ -3,7 +3,7 @@ This repository contains code for training and inference of volumes with use of 
 
 You need to have `cuda 11.0` installed. You might have problems setting-up the environment with different versions.
 
-The easiest is to set-up a conda virtual environment using `vorecem_env.yaml` file from the repository.
+The easiest is to set-up a conda virtual environment using `nano_oetzi_env.yaml` file from the repository.
 ```
 conda env create --prefix <path_to_environment> --file=<path_to_conda_env.yaml_file>
 ```
