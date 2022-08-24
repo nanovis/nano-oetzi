@@ -54,7 +54,7 @@ if __name__=='__main__':
         print('Running inference.')
     files = sorted(os.listdir(output_norm_splits_dir_path))
     for f in files:
-        result = os.system('python ./test_transfer.py ' + str(output_norm_splits_dir_path) + '/' + f + ' --checkpoint ../models/model-epoch-020_edit.ckpt --output_path ' + str(output_predictions_dir_path))
+        result = os.system('python ./test_transfer.py ' + str(output_norm_splits_dir_path) + '/' + f + ' --checkpoint ../models/four_classes_model.ckpt --output_path ' + str(output_predictions_dir_path))
         if result != 0:
             print('Error: Failed to run inference on chunk ' + f)
             exit(1)
