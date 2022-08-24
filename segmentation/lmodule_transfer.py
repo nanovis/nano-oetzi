@@ -26,6 +26,9 @@ class iUnets3D(pl.LightningModule):
         super().__init__()
 
         self.hparams = hparams
+#        for key in self.hparams.keys():
+#            self.hparams[key]=hparams[key]
+#        self.save_hyperparameters(hparams)
 
         if hparams.last_act == 'nrelu':
             self.act = NormalizedReLU()
@@ -71,6 +74,7 @@ class iUnets3D(pl.LightningModule):
             self.model = ResidualUNet3D(in_channels=1, out_channels=hparams.out_channels, f_maps=f_maps, num_groups=2, is_segmentation=False)
         else:
             raise Exception(f"Invalid model parameter: {hparams.model}. Either unet or iunet")
+
         if self.hparams.loss == 'bce':
             self.loss = F.binary_cross_entropy_with_logits
         elif self.hparams.loss == 'awl':
@@ -86,7 +90,7 @@ class iUnets3D(pl.LightningModule):
 
         self.save_hyperparameters()
 
-        print(self.model)
+#        print(self.model)
 
     def forward(self, x):
         return self.act(self.model(x))
@@ -109,14 +113,14 @@ class iUnets3D(pl.LightningModule):
 
         self.log('train_loss', loss.detach())
 
+        pred_mask = torch.argmax(pred, dim=1, keepdim=True)
+
         if batch_idx == 0:
-            pred_prob = F.softmax(pred, dim=1)
-            pred_mask = torch.argmax(pred_prob, dim=1, keepdim=True)
             pred_mask = torch.mul(pred_mask, 85.)
             targ_mask = torch.mul(targ, 85.)
             self.logger.experiment.log({
-                'train/Predictions': wandb.Image(pred_mask[0, :, self.hparams.tile_sz // 2, :]),
-                'train/Targets': wandb.Image(targ_mask[0, :, self.hparams.tile_sz // 2, :]),
+                'train/Predictions': wandb.Image(pred_mask[2, :, self.hparams.tile_sz // 2, :]),
+                'train/Targets': wandb.Image(targ_mask[2, :, self.hparams.tile_sz // 2, :]),
             })
 
         return {
@@ -148,14 +152,20 @@ class iUnets3D(pl.LightningModule):
         self.log('val_loss', loss)
         self.log('val_f1', val_f1)
 
+        print(f'\nValid --- Target ({targ.shape}) is {targ.dtype} with min/max {targ.min(), targ.max()}')
+        print(f'\nValid --- Pred ({pred.shape}) is {pred.dtype} with min/max {pred.min(), pred.max()}')
+        print(f'\nValid --- Target squeeze ({targ_squeeze.shape}) is {targ_squeeze.dtype} with min/max {targ_squeeze.min(), targ_squeeze.max()}')
+        print(f'\nNGAN: val_f1: {val_f1}')
+
+        pred = F.softmax(pred, dim=1)
+        pred_mask = torch.argmax(pred, dim=1, keepdim=True)
+
         if batch_idx == 0:
-            pred_prob = F.softmax(pred, dim=1)
-            pred_mask = torch.argmax(pred_prob, dim=1, keepdim=True)
             pred_mask = torch.mul(pred_mask, 85.)
             targ_mask = torch.mul(targ, 85.)
             self.logger.experiment.log({
-                'valid/Predictions': wandb.Image(pred_mask[0, :, self.hparams.tile_sz // 2, :]),
-                'valid/Targets': wandb.Image(targ_mask[0, :, self.hparams.tile_sz // 2, :]),
+                'valid/Predictions': wandb.Image(pred_mask[2, :, self.hparams.tile_sz // 2, :]),
+                'valid/Targets': wandb.Image(targ_mask[2, :, self.hparams.tile_sz // 2, :]),
             })
 
         return {
@@ -176,21 +186,61 @@ class iUnets3D(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         vol = batch['vol']
+        # targ = batch['label']
         pred = self.forward(vol)
 
+        # targ_squeeze = torch.squeeze(targ, 1)
+        # loss = self.loss(pred, targ_squeeze)
+
         pred_prob = F.softmax(pred, dim=1)
+        pred_mask = torch.argmax(pred, dim=1, keepdim=True)
+        # test_f1 = self.metrics(pred_mask, targ)
+
+        if batch_idx == 0:
+            pred_mask = torch.mul(pred_mask, 85.)
+            # targ_mask = torch.mul(targ, 85.)
+            self.logger.experiment.log({
+                'test/Predictions': wandb.Image(pred_mask[0, :, self.hparams.tile_sz // 2, :]),
+                # 'test/Targets': wandb.Image(targ_mask[0, :, self.hparams.tile_sz // 2, :]),
+            })
+
+        # self.log('test_loss', loss)
+        # self.log('test_f1', test_f1)
 
         return {
+            # 'loss': loss,
+            # 'f1_score': test_f1,
             'pred_prob': pred_prob,
+            # 'targ': targ,
             'tile_locations': batch['tile_locations']
         }
 
     def test_epoch_end(self, values):
+        # avg_loss = torch.stack([v['loss'] for v in values]).mean()
+        # avg_f1 = torch.stack([v['f1_score'] for v in values]).mean()
+        #
+        # self.log('metrics/test_loss', avg_loss)
+        # self.log('metrics/test_f1_score', avg_f1)
+
+        # path_test = Path(self.hparams.train) / 'test'
+        # path_predict = Path(self.hparams.train) / 'predictions'
+        # files = list(path_test.rglob('*.pt'))
+        # file0 = Path(files[0])
+        file0 = Path(self.hparams.path)
+        # print('tuki 1')
+        # if hasattr(self.hparams, 'file_name'):
+        #     print("tuki 2")
+        #     file0 = Path(self.hparams.file_name)
         predictions = torch.cat([v['pred_prob'] for v in values], dim=0)
-        torch.save(predictions, f'predictions.pt')
+        # torch.save(predictions, f'{path_predict}/{file0.stem}_predictions.pt')
+        torch.save(predictions, f'{self.hparams.output_path}/{file0.stem}_predictions.pt')
 
         tile_locations = torch.cat([v['tile_locations'] for v in values], dim=0)
-        torch.save(tile_locations, f'tile_locations.pt')
+        # torch.save(tile_locations, f'{path_predict}/{file0.stem}_tile_locations.pt')
+        torch.save(tile_locations, f'{self.hparams.output_path}/{file0.stem}_tile_locations.pt')
+
+        # labels = torch.cat([v['targ'] for v in values], dim=0)
+        # torch.save(labels, f'labels.pt')
 
 
 ###
@@ -203,6 +253,7 @@ class iUnets3D(pl.LightningModule):
         return Composite(
             Lambda(make_4d),
             RandCrop(self.hparams.tile_sz, apply_on=['vol', 'label'], dtype=dtype),
+            # RandRot90(ndim=3, apply_on=['vol', 'label']),
             RandFlip(apply_on=['vol', 'label']),
             Noop(dtype=dtype, apply_on=['vol']),
             Noop(dtype=dtype_label, apply_on=['label']),
@@ -222,9 +273,12 @@ class iUnets3D(pl.LightningModule):
 
     def test_transforms(self):
         dtype = torch.float16 if self.hparams.precision == 16 else torch.float32
+        dtype_label = torch.long
         return Composite(
             Lambda(make_4d),
             Noop(dtype=dtype, apply_on=['vol']),
+            # Noop(dtype=dtype_label, apply_on=['label']),
+            # apply_on=['vol', 'label']
             apply_on=['vol']
         )
 
@@ -254,13 +308,26 @@ class iUnets3D(pl.LightningModule):
 
 
     def test_dataloader(self):
-        test_ds = TorchDataset(Path(self.hparams.train)/'test', preprocess_fn=self.test_transforms()).preload()\
+        # test_ds = TorchDataset(Path(self.hparams.train)/'test', preprocess_fn=self.test_transforms()).preload()\
+        #     .tile(['vol', 'label'], tile_sz=self.hparams.tile_sz, overlap=self.hparams.tile_overlap)
+        # test_ds = TorchDataset(Path(self.hparams.train) / 'test', preprocess_fn=self.test_transforms()).preload() \
+        #     .tile(['vol'], tile_sz=self.hparams.tile_sz, overlap=self.hparams.tile_overlap)
+        test_ds = TorchDataset([Path(self.hparams.path)], preprocess_fn=self.test_transforms()).preload() \
             .tile(['vol'], tile_sz=self.hparams.tile_sz, overlap=self.hparams.tile_overlap)
 
+#        for tile in test_ds:
+#            print(f"\nNGAN: {tile['tile_locations']}")
+        # print(test_ds)
         return torch.utils.data.DataLoader(test_ds,
                                            batch_size=self.hparams.batch_size,
                                            pin_memory=True,
                                            collate_fn=dict_collate_fn)
+
+###
+### Helper functions
+###
+    def set_additional_attribute(self, arg_name, arg):
+        self.hparams[arg_name] = arg
 
 ###
 ### OPTIMIZER & PARSER
