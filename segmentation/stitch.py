@@ -1,187 +1,160 @@
+#### Stitching 4-class
+from fileinput import filename
+import os
+import json
 import torch
-import matplotlib.pyplot as plt
+import numpy as np
 
-overlap_size = 32
-block_size = 128
+import Utils.stitching_all_class as st
 
-# Volume init
-volume_size = [360, 1440, 1024]
-
-
-# Find block limits in volume:
-def find_block_limits(locations, min_locations, max_locations):
-    for i in locations:
-        for j in i:
-            for k in j:
-                if k[0].item() > max_locations[0]:
-                    max_locations[0] = k[0].item()
-
-                if k[1].item() > max_locations[1]:
-                    max_locations[1] = k[1].item()
-
-                if k[2].item() > max_locations[2]:
-                    max_locations[2] = k[2].item()
-
-                if k[0].item() < min_locations[0]:
-                    min_locations[0] = k[0].item()
-
-                if k[1].item() < min_locations[1]:
-                    min_locations[1] = k[1].item()
-
-                if k[2].item() < min_locations[2]:
-                    min_locations[2] = k[2].item()
+from pathlib import Path
+from argparse import ArgumentParser
 
 
-# Non-overlapping parts of blocks:
-def non_overlapping_parts(blocks, volume, locations, min_locations, max_locations):
-    for nbatch in range(blocks.size()[0]):
-        print('batch: ' + str(nbatch))
-        for nblock in range(blocks.size()[1]):
-            print('block: ' + str(nblock))
-            block = blocks[nbatch][nblock][0]
-            loc_0 = locations[nbatch][nblock][0]
-            loc_1 = locations[nbatch][nblock][1]
-            volume[loc_0[0] + 32:loc_1[0] - 32, loc_0[1] + 32:loc_1[1] - 32, loc_0[2] + 32:loc_1[2] - 32] = block[32:96, 32:96, 32:96]
+def stitchVolumes(prefix, exp_path, output_path, json_file, tile_locations_file, output_prefix):
+    # json_file_path = exp_path + json_file
+    # jsonFile = open(json_file_path)
+    jsonFile = open(json_file)
+    jsonData = json.load(jsonFile)
 
-            if loc_0[0] == min_locations[0]:
-                volume[loc_0[0]:loc_0[0] + 32, loc_0[1] + 32:loc_1[1] - 32, loc_0[2] + 32:loc_1[2] - 32] = block[0:32, 32:96, 32:96]
-            if loc_0[1] == min_locations[1]:
-                volume[loc_0[0] + 32:loc_1[0] - 32, loc_0[1]:loc_0[1] + 32, loc_0[2] + 32:loc_1[2] - 32] = block[32:96, 0:32, 32:96]
-            if loc_0[2] == min_locations[2]:
-                volume[loc_0[0] + 32:loc_1[0] - 32, loc_0[1] + 32:loc_1[1] - 32, loc_0[2]:loc_0[2] + 32] = block[32:96, 32:96, 0:32]
-            if loc_1[0] == max_locations[0]:
-                volume[loc_1[0] - 32:loc_1[0], loc_0[1] + 32:loc_1[1] - 32, loc_0[2] + 32:loc_1[2] - 32] = block[96:128, 32:96, 32:96]
-            if loc_1[1] == max_locations[1]:
-                volume[loc_0[0] + 32:loc_1[0] - 32, loc_1[1] - 32:loc_1[1], loc_0[2] + 32:loc_1[2] - 32] = block[32:96, 96:128, 32:96]
-            if loc_1[2] == max_locations[2]:
-                volume[loc_0[0] + 32:loc_1[0] - 32, loc_0[1] + 32:loc_1[1] - 32, loc_1[2] - 32:loc_1[2]] = block[32:96, 32:96, 96:128]
+    overlap = jsonData['overlap']
+    vol_locs = jsonData['split_coords']
+    slices = vol_locs[0][0][1]+1
+    vol_num = len(vol_locs)
+    vol_numX = 0
+    for i in range(vol_num):
+        if vol_locs[i][1][0] == 0:
+            vol_numX += 1
+    vol_numY = int(vol_num / vol_numX)
 
-            volume[loc_0[0] + 32:loc_1[0] - 32, loc_0[1] + 32:loc_1[1] - 32, loc_0[2] + 32:loc_1[2] - 32] = block[32:96, 32:96, 32:96]
+    volX = vol_locs[-1][-1][-1]+1 # 3
+    volY = vol_locs[-1][-2][-1]+1 # 4
 
+    volume_background = torch.zeros(slices, volY, volX)
+    volume_membrane = torch.zeros(slices, volY, volX)
+    volume_spikes = torch.zeros(slices, volY, volX)
+    volume_inner = torch.zeros(slices, volY, volX)
 
-# Mask volume for averaging on overlaps
-def average_by_masking_stitchin(blocks, volume, mask_volume, locations):
-    for nbatch in range(blocks.size()[0]):
-        print('batch: ' + str(nbatch))
-        for nblock in range(blocks.size()[1]):
-            print('block: ' + str(nblock))
-            block = blocks[nbatch][nblock][0]
-            loc_0 = locations[nbatch][nblock][0]
-            loc_1 = locations[nbatch][nblock][1]
-            mask_volume[loc_0[0]:loc_1[0], loc_0[1]:loc_1[1], loc_0[2]:loc_1[2]] += 1.0
+    mask_vols = []
+    for i in range(vol_num):
+        mask_vols.append(torch.ones(slices, 512, 512))
 
-    for nbatch in range(blocks.size()[0]):
-        print('batch: ' + str(nbatch))
-        for nblock in range(blocks.size()[1]):
-            print('block: ' + str(nblock))
-            block = blocks[nbatch][nblock][0]
-            loc_0 = locations[nbatch][nblock][0]
-            loc_1 = locations[nbatch][nblock][1]
-            volume[loc_0[0]:loc_1[0], loc_0[1]:loc_1[1], loc_0[2]:loc_1[2]] = block.to(device="cpu") * (1 / mask_volume[loc_0[0]:loc_1[0], loc_0[1]:loc_1[1], loc_0[2]:loc_1[2]])
+    x_thr = overlap[2]
+    y_thr = overlap[1]
 
+    # print('vol_numY: ' + str(vol_numY))
+    # print('vol_numX: ' + str(vol_numX))
 
-# Alpha blending
-def alpha_blended_stitching(blocks, volume, locations, min_locations, max_locations, block_size, overlap_size):
-    mask_block = torch.ones(block_size, block_size, block_size)
-    for i in range(overlap_size):
-        mask_block[i, :, :] *= i / overlap_size
-        mask_block[:, i, :] *= i / overlap_size
-        mask_block[:, :, i] *= i / overlap_size
-        mask_block[-i, :, :] *= i / overlap_size
-        mask_block[:, -i, :] *= i / overlap_size
-        mask_block[:, :, -i] *= i / overlap_size
+    for i in range(x_thr):
+        for j in range(vol_num):
+            if j % vol_numX == 0:
+                mask_vols[j][:, :, -i] *= i / x_thr
+            
+            elif j % vol_numX == (vol_numX - 1):
+                mask_vols[j][:, :, i] *= i / x_thr
+            
+            else:
+                mask_vols[j][:, :, i] *= i / x_thr
+                mask_vols[j][:, :, -i] *= i / x_thr
+            
+    for i in range(y_thr):
+        for j in range(vol_num):
+            if j < vol_numX:
+                mask_vols[j][:, -i, :] *= i / y_thr
+            
+            elif j >= (vol_num - vol_numX):
+                mask_vols[j][:, i, :] *= i / y_thr
+            
+            else:
+                mask_vols[j][:, i, :] *= i / y_thr
+                mask_vols[j][:, -i, :] *= i / y_thr
 
-    for nbatch in range(blocks.size()[0]):
-        print('batch: ' + str(nbatch))
-        for nblock in range(blocks.size()[1]):
-            block = blocks[nbatch, nblock, 0]
-            loc_0 = locations[nbatch, nblock, 0]
-            loc_1 = locations[nbatch, nblock, 1]
-            volume[loc_0[0]:loc_1[0], loc_0[1]:loc_1[1], loc_0[2]:loc_1[2]] += block.to(device="cpu") * mask_block
+    for vol_num in range(vol_num):
+    # for vol_num in range(1,2):
+        print(vol_num)
 
-    for i in range(1, overlap_size):
-        volume[min_locations[0] + i, :, :] /= i / overlap_size
-        volume[:, min_locations[1] + i, :] /= i / overlap_size
-        volume[:, :, min_locations[2] + i] /= i / overlap_size
-        volume[max_locations[0] - i, :, :] /= i / overlap_size
-        volume[:, max_locations[1] - i, :] /= i / overlap_size
-        volume[:, :, max_locations[2] - i] /= i / overlap_size
+        # [batch, batch_size, num_class, TILE]
+        blocks = torch.load(exp_path + prefix + str(vol_num) + '.pt')
 
+        # [batch, batch_size, batch_size * batch, LOC]
+        locations = torch.load(tile_locations_file + str(vol_num) + '.pt')
 
-# Display slice from selected volume
-def display_volume_slice(volume, slice):
-    fig, ax = plt.subplots()
-    im = ax.imshow((volume[slice]))
-    plt.show()
+        overlap_size = 32
+        block_size = 128
 
+        max_locations = [0, 0, 0]
+        min_locations = [slices * 2, volY * 2, volX * 2]
 
-# Display slice from selected volume
-def display_volume_slice_tr_val_tst(tnsr, slice):
-    fig, ax = plt.subplots(1, 2)
-    ax[0].imshow((tnsr['vol'][slice]))
-    ax[0].title.set_text('Prediction')
-    ax[1].imshow((tnsr['label'][slice]))
-    ax[1].title.set_text('Label')
-    plt.show()
+        # Function calls:
+        st.find_block_limits_2(locations, min_locations, max_locations)
 
+        volume_0 = torch.zeros(slices, 512, 512)
+        class_num = 0
+        st.alpha_blended_stitching_all_class(blocks, volume_0, locations, min_locations, max_locations, block_size, overlap_size, class_num)
 
-# Volume slice comparison
-def display_volume_slice_comparison(volume, labels_volume, slice):
-    fig, ax = plt.subplots(1, 2)
-    ax[0].imshow((volume[slice]))
-    ax[0].title.set_text('Prediction')
-    ax[1].imshow((labels_volume[slice]))
-    ax[1].title.set_text('Label')
-    plt.show()
+        volume_1 = torch.zeros(slices, 512, 512)
+        class_num = 1
+        st.alpha_blended_stitching_all_class(blocks, volume_1, locations, min_locations, max_locations, block_size, overlap_size, class_num)
 
+        volume_2 = torch.zeros(slices, 512, 512)
+        class_num = 2
+        st.alpha_blended_stitching_all_class(blocks, volume_2, locations, min_locations, max_locations, block_size, overlap_size, class_num)
 
-# Block comparison
-def display_block_slice_comparison(volume1, volume2, index, slice):
-    pred_block = volume1[index[0], index[1], index[2]].cpu().float()
-    label_block = volume2[index[0], index[1], index[2]].cpu().float()
-    fig, ax = plt.subplots(1, 2)
-    ax[0].imshow((pred_block[slice]))
-    ax[0].title.set_text('Prediction')
-    ax[1].imshow((label_block[slice]))
-    ax[1].title.set_text('Label')
-    plt.show()
+        volume_3 = torch.zeros(slices, 512, 512)
+        class_num = 3
+        st.alpha_blended_stitching_all_class(blocks, volume_3, locations, min_locations, max_locations, block_size, overlap_size, class_num)
 
+        x0 = vol_locs[vol_num][0][0]
+        x1 = vol_locs[vol_num][0][1]+1
+        y0 = vol_locs[vol_num][1][0]
+        y1 = vol_locs[vol_num][1][1]+1
+        z0 = vol_locs[vol_num][2][0]
+        z1 = vol_locs[vol_num][2][1]+1
 
-# Save tensor to binary file in uint8 format
-def save_to_binary_file(volume, filename):
-    volume_uint8 = volume - volume.min()
-    volume_uint8 = volume_uint8 / volume_uint8.max() * 255
-    volume_uint8 = volume_uint8.to(torch.uint8)
-    volume_uint8 = volume_uint8.cpu().numpy()
-    buffer = bytes(volume_uint8)
-    with open(filename, 'w+b') as file:
-        file.write(buffer)
-        file.close()
+        volume_background[x0:x1, y0:y1, z0:z1] += volume_0 * mask_vols[vol_num]
+        volume_membrane[x0:x1, y0:y1, z0:z1] += volume_1 * mask_vols[vol_num]
+        volume_spikes[x0:x1, y0:y1, z0:z1] += volume_2 * mask_vols[vol_num]
+        volume_inner[x0:x1, y0:y1, z0:z1] += volume_3 * mask_vols[vol_num]
+
+    # st.display_volume_slice_comparison_all_class(volume_background, volume_membrane, volume_spikes, volume_inner, 128)
+
+    volume_background = torch.flip(volume_background, [1])
+    volume_membrane = torch.flip(volume_membrane, [1])
+    volume_spikes = torch.flip(volume_spikes, [1])
+    volume_inner = torch.flip(volume_inner, [1])
+
+    filename = output_path + output_prefix + '-Background.raw'
+    st.save_to_binary_file(volume_background, filename)
+
+    filename = output_path + output_prefix + '-Membrane.raw'
+    st.save_to_binary_file(volume_membrane, filename)
+
+    filename = output_path + output_prefix + '-Spikes.raw'
+    st.save_to_binary_file(volume_spikes, filename)
+
+    filename = output_path + output_prefix + '-Inner.raw'
+    st.save_to_binary_file(volume_inner, filename)
 
 
-# Save tensor to binary file in uint8 format
-def save_to_binary_file_uint16(volume, filename):
-    volume_uint16 = volume - volume.min()
-    volume_uint16 = volume_uint16 / volume_uint16.max() * 65535
-    volume_uint16 = volume_uint16.to(torch.int32)
-    volume_uint16 = volume_uint16.cpu().numpy()
-    buffer = bytes(volume_uint16)
-    with open(filename, 'w+b') as file:
-        file.write(buffer)
-        file.close()
+if __name__=='__main__':
+    parser = ArgumentParser('Stitch depth * 512 * 512 volumes into one volume')
+    parser.add_argument('file_prefix', type=str, help='Volume filename prefix')
+    parser.add_argument('volume_path', type=str, help='Path to volume')
+    parser.add_argument('save_dir', type=str, help='Path to save torch volume dir')
+    parser.add_argument('volume_chunks_file', type=str, help='JSON file containing volume chunk locations')
+    parser.add_argument('volume_tiles_file', type=str, help='JSON file containing volume tile locations')
+    parser.add_argument('output_prefix', type=str, help='Output volume prefix')
+    args = parser.parse_args()
+    
+    save_dir = Path(args.save_dir)
+    if not save_dir.exists(): os.mkdir(save_dir)
 
-# Save tensor to binary file in uint8 format
-def save_to_binary_file_float(volume, filename):
-    volume_float = volume
-    volume_float = volume_float / volume_float.max()
-    volume_float = volume_float.to(torch.float32)
-    volume_float = volume_float.cpu().numpy()
-    buffer = bytes(volume_float)
-    with open(filename, 'w+b') as file:
-        file.write(buffer)
-        file.close()
+    # # Load original volume
+    # if args.filename.endswith(".json") or args.filename.endswith(".JSON"):
+    #     volumeData = loadJSONVolume(args.filename)
+    # elif args.filename.endswith(".mrc"):
+    #     volumeData, _ = loadSingleMrc(args.filename, normalized=True, cache=True)
 
-
-# Returns cropped volume
-def crop_volume_to_min_max(volume, min_locations, max_locations):
-    return volume[min_locations[0]+1:max_locations[0], min_locations[1]+1:max_locations[1], min_locations[2]+1:max_locations[2]]
+    # if isinstance(volumeData, np.ndarray):
+    #     volumeData = torch.from_numpy(volumeData)
+    stitchVolumes(args.file_prefix, args.volume_path, args.save_dir, args.volume_chunks_file, args.volume_tiles_file, args.output_prefix)
