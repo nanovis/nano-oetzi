@@ -135,9 +135,9 @@ def alpha_blended_stitching(blocks, volume, locations, min_locations, max_locati
         mask_block[i, :, :] *= i / overlap_size
         mask_block[:, i, :] *= i / overlap_size
         mask_block[:, :, i] *= i / overlap_size
-        mask_block[-i, :, :] *= i / overlap_size
-        mask_block[:, -i, :] *= i / overlap_size
-        mask_block[:, :, -i] *= i / overlap_size
+        mask_block[-i-1, :, :] *= i / overlap_size
+        mask_block[:, -i-1, :] *= i / overlap_size
+        mask_block[:, :, -i-1] *= i / overlap_size
 
     for nbatch in range(blocks.size()[0]):
         print('batch: ' + str(nbatch))
@@ -170,9 +170,9 @@ def alpha_blended_stitching_all_class(blocks, volume, locations, min_locations, 
         mask_block[i, :, :] *= i / overlap_size
         mask_block[:, i, :] *= i / overlap_size
         mask_block[:, :, i] *= i / overlap_size
-        mask_block[-i, :, :] *= i / overlap_size
-        mask_block[:, -i, :] *= i / overlap_size
-        mask_block[:, :, -i] *= i / overlap_size
+        mask_block[-i-1, :, :] *= i / overlap_size
+        mask_block[:, -i-1, :] *= i / overlap_size
+        mask_block[:, :, -i-1] *= i / overlap_size
 
     limit1 = locations.size()[0]
     limit2 = locations.size()[1]
@@ -202,9 +202,9 @@ def alpha_blended_stitching_all_class_2(blocks, volume, locations, min_locations
         mask_block[i, :, :] *= i / overlap_size
         mask_block[:, i, :] *= i / overlap_size
         mask_block[:, :, i] *= i / overlap_size
-        mask_block[-i, :, :] *= i / overlap_size
-        mask_block[:, -i, :] *= i / overlap_size
-        mask_block[:, :, -i] *= i / overlap_size
+        mask_block[-i-1, :, :] *= i / overlap_size
+        mask_block[:, -i-1, :] *= i / overlap_size
+        mask_block[:, :, -i-1] *= i / overlap_size
 
     for nbatch in range(blocks.size()[0]):
         print('batch: ' + str(nbatch))
