@@ -73,7 +73,7 @@ python ./split.py <input_mrc_or_json_volume_file> <chunks_output_folder>
 ### Normalize
 Checks if split data is correctly bundeled and normalizes the data within chunks for F-B segmentation:
 ```
-python ./cehck_data.py <folder_with_chunks> <normalized_chunks_output_folder>
+python ./check_data.py <folder_with_chunks> <normalized_chunks_output_folder>
 ```
 
 ### Foreground-background training
