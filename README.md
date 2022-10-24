@@ -1,20 +1,15 @@
 # Finding Nano-Ötzi: Cryo-Electron Tomography Visualization Guided by Learned Segmentation
 This repository contains code for training and inference of volumes with use of deep segmentation model presented in Nano-Oetzi paper.
 
-You need to have `cuda 11.0` installed. You might have problems setting-up the environment with different versions.
+You need to have `cuda 11.0` and 'python 3.8' installed. You might have problems setting-up the environment with different versions.
 
-The easiest is to set-up a conda virtual environment using `nano_oetzi_env.yaml` file from the repository.
+The easiest is to set-up a conda virtual environment using `requirements.txt` file from the repository.
 ```
-conda env create --prefix <path_to_environment> --file=<path_to_conda_env.yaml_file>
+Use conda to create a new environment with python 3.8 and install all packages in requirements.txt using `pip` command.
 ```
 Once activating the environment:
 ```
 conda activate <path_to_environment>
-```
-you need to install additional packages using `pip` command:
-```
-pip install git+https://github.com/aliutkus/torchinterp1d.git@master#egg=torchinterp1d
-pip install git+https://github.com/lessw2020/Ranger-Deep-Learning-Optimizer@master#egg=ranger
 ```
 The environment should be ready to use.
 
