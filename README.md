@@ -1,7 +1,7 @@
 # Finding Nano-Ötzi: Cryo-Electron Tomography Visualization Guided by Learned Segmentation
 This repository contains code for training and inference of volumes with use of deep segmentation model presented in Nano-Oetzi paper.
 
-You need to have `cuda 11.0` and 'python 3.8' installed. You might have problems setting-up the environment with different versions.
+You need to have `cuda 11.0` and `python 3.8` installed. You might have problems setting-up the environment with different versions.
 
 The easiest is to set-up a conda virtual environment using `requirements.txt` file from the repository.
 ```
