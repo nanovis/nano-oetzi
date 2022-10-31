@@ -30,14 +30,19 @@ def stitchVolumes(prefix, exp_path, output_path, json_file, tile_locations_file,
     volX = vol_locs[-1][-1][-1]+1 # 3
     volY = vol_locs[-1][-2][-1]+1 # 4
 
+    print('slices: ', slices, ' volX: ', volX, ' volY: ', volY)
+
     volume_background = torch.zeros(slices, volY, volX)
     volume_membrane = torch.zeros(slices, volY, volX)
     volume_spikes = torch.zeros(slices, volY, volX)
     volume_inner = torch.zeros(slices, volY, volX)
 
+    volume_size_x = min(512, volX)
+    volume_size_y = min(512, volY)
+
     mask_vols = []
     for i in range(vol_num):
-        mask_vols.append(torch.ones(slices, 512, 512))
+        mask_vols.append(torch.ones(slices, volume_size_y, volume_size_x))
 
     x_thr = overlap[2]
     y_thr = overlap[1]
@@ -69,17 +74,17 @@ def stitchVolumes(prefix, exp_path, output_path, json_file, tile_locations_file,
                 mask_vols[j][:, i, :] *= i / y_thr
                 mask_vols[j][:, -i, :] *= i / y_thr
 
-    for vol_num in range(vol_num):
+    for v_num in range(vol_num):
     # for vol_num in range(1,2):
-        print(vol_num)
+        print(v_num)
 
         # [batch, batch_size, num_class, TILE]
-        blocks = torch.load(exp_path + prefix + str(vol_num) + '.pt')
+        blocks = torch.load(exp_path + prefix + str(v_num) + '.pt')
 
         # [batch, batch_size, batch_size * batch, LOC]
-        locations = torch.load(tile_locations_file + str(vol_num) + '.pt')
+        locations = torch.load(tile_locations_file + str(v_num) + '.pt')
 
-        overlap_size = 32
+        overlap_size = 32 - 1
         block_size = 128
 
         max_locations = [0, 0, 0]
@@ -88,33 +93,33 @@ def stitchVolumes(prefix, exp_path, output_path, json_file, tile_locations_file,
         # Function calls:
         st.find_block_limits_2(locations, min_locations, max_locations)
 
-        volume_0 = torch.zeros(slices, 512, 512)
+        volume_0 = torch.zeros(slices, volume_size_y, volume_size_x)
         class_num = 0
         st.alpha_blended_stitching_all_class(blocks, volume_0, locations, min_locations, max_locations, block_size, overlap_size, class_num)
 
-        volume_1 = torch.zeros(slices, 512, 512)
+        volume_1 = torch.zeros(slices, volume_size_y, volume_size_x)
         class_num = 1
         st.alpha_blended_stitching_all_class(blocks, volume_1, locations, min_locations, max_locations, block_size, overlap_size, class_num)
 
-        volume_2 = torch.zeros(slices, 512, 512)
+        volume_2 = torch.zeros(slices, volume_size_y, volume_size_x)
         class_num = 2
         st.alpha_blended_stitching_all_class(blocks, volume_2, locations, min_locations, max_locations, block_size, overlap_size, class_num)
 
-        volume_3 = torch.zeros(slices, 512, 512)
+        volume_3 = torch.zeros(slices, volume_size_y, volume_size_x)
         class_num = 3
         st.alpha_blended_stitching_all_class(blocks, volume_3, locations, min_locations, max_locations, block_size, overlap_size, class_num)
 
-        x0 = vol_locs[vol_num][0][0]
-        x1 = vol_locs[vol_num][0][1]+1
-        y0 = vol_locs[vol_num][1][0]
-        y1 = vol_locs[vol_num][1][1]+1
-        z0 = vol_locs[vol_num][2][0]
-        z1 = vol_locs[vol_num][2][1]+1
+        x0 = vol_locs[v_num][0][0]
+        x1 = vol_locs[v_num][0][1]+1
+        y0 = vol_locs[v_num][1][0]
+        y1 = vol_locs[v_num][1][1]+1
+        z0 = vol_locs[v_num][2][0]
+        z1 = vol_locs[v_num][2][1]+1
 
-        volume_background[x0:x1, y0:y1, z0:z1] += volume_0 * mask_vols[vol_num]
-        volume_membrane[x0:x1, y0:y1, z0:z1] += volume_1 * mask_vols[vol_num]
-        volume_spikes[x0:x1, y0:y1, z0:z1] += volume_2 * mask_vols[vol_num]
-        volume_inner[x0:x1, y0:y1, z0:z1] += volume_3 * mask_vols[vol_num]
+        volume_background[x0:x1, y0:y1, z0:z1] += volume_0 * mask_vols[v_num]
+        volume_membrane[x0:x1, y0:y1, z0:z1] += volume_1 * mask_vols[v_num]
+        volume_spikes[x0:x1, y0:y1, z0:z1] += volume_2 * mask_vols[v_num]
+        volume_inner[x0:x1, y0:y1, z0:z1] += volume_3 * mask_vols[v_num]
 
     # st.display_volume_slice_comparison_all_class(volume_background, volume_membrane, volume_spikes, volume_inner, 128)
 

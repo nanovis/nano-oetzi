@@ -19,7 +19,7 @@ def loadJSONVolume(filename):
     jsonFile = open(filename)
     jsonData = json.load(jsonFile)
 
-    volumeFilePath = os.path.dirname(filename) + '\\' + jsonData['file']
+    volumeFilePath = os.path.dirname(filename) + '//' + jsonData['file']
     print('Loading volume: ' + volumeFilePath)
 
     volumeFile = open(volumeFilePath)
@@ -46,9 +46,9 @@ def splitVolume(volumeData, save_dir, splitX=0, splitY=512, splitZ=512):
 
     if numX * splitX < volumeData.shape[0]:
         numX += 1
-    if numY * splitY <= volumeData.shape[1]:
+    if numY * splitY < volumeData.shape[1]:
         numY += 1
-    if numZ * splitZ <= volumeData.shape[2]:
+    if numZ * splitZ < volumeData.shape[2]:
         numZ += 1
 
     overlapX = (volumeData.size()[0] % splitX) / numX / 2
@@ -59,8 +59,16 @@ def splitVolume(volumeData, save_dir, splitX=0, splitY=512, splitZ=512):
         overlapX = int((numX * splitX - volumeData.size()[0]) / (numX - 1))
     else:
         overlapX = 0
-    overlapY = int((numY * splitY - volumeData.size()[1]) / (numY - 1))
-    overlapZ = int((numZ * splitZ - volumeData.size()[2]) / (numZ - 1))
+
+    if numY > 1:
+        overlapY = int((numY * splitY - volumeData.size()[1]) / (numY - 1))
+    else:
+        overlapY = 0
+
+    if numZ > 1:
+        overlapZ = int((numZ * splitZ - volumeData.size()[2]) / (numZ - 1))
+    else:
+        overlapZ = 0
 
     # print (str(numX) + ' ' + str(numY) + ' ' + str(numZ))
     print (str(overlapX) + ' ' + str(overlapY) + ' ' + str(overlapZ))
@@ -69,9 +77,20 @@ def splitVolume(volumeData, save_dir, splitX=0, splitY=512, splitZ=512):
     startX = 0
     startY = 0
     startZ = 0
-    endX = splitX - 1
-    endY = splitY - 1
-    endZ = splitZ - 1
+    if volumeData.shape[0] <= splitX:
+        endX = volumeData.shape[0] - 1
+    else:
+        endX = splitX - 1
+    
+    if volumeData.shape[1] <= splitY:
+        endY = volumeData.shape[1] - 1
+    else:
+        endY = splitY - 1
+    
+    if volumeData.shape[2] <= splitZ:
+        endZ = volumeData.shape[2] - 1
+    else:
+        endZ = splitZ - 1
 
     tile = 0
     split_coords = []
@@ -107,7 +126,7 @@ def splitVolume(volumeData, save_dir, splitX=0, splitY=512, splitZ=512):
             }, outfile)                                
 
 if __name__=='__main__':
-    parser = ArgumentParser('Splits volume in depth * 512 * 512')
+    parser = ArgumentParser('Splits volume in depth * min(width, 512) * min(height, 512)')
     parser.add_argument('filename', type=str, help='Volume filename')
     parser.add_argument('save_dir', type=str, help='Path to save torch volume dir')
     args = parser.parse_args()

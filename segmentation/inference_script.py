@@ -115,7 +115,8 @@ if __name__=='__main__':
     # Clean up
     if args.v and args.c:
         print('Cleaning up the temporary files.')
-    result = os.system('rm -rf ' + str(output_splits_dir_path))
+    if args.c:
+        result = os.system('rm -rf ' + str(output_splits_dir_path))
     if result != 0:
         print('Error: Failed to clean up the temporary files.')
         exit(1)

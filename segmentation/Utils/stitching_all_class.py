@@ -192,9 +192,9 @@ def alpha_blended_stitching_all_class(blocks, volume, locations, min_locations, 
         volume[min_locations[0] + i, :, :] /= i / overlap_size
         volume[:, min_locations[1] + i, :] /= i / overlap_size
         volume[:, :, min_locations[2] + i] /= i / overlap_size
-        volume[max_locations[0] - i, :, :] /= i / overlap_size
-        volume[:, max_locations[1] - i, :] /= i / overlap_size
-        volume[:, :, max_locations[2] - i] /= i / overlap_size
+        volume[max_locations[0] - i - 1, :, :] /= i / overlap_size
+        volume[:, max_locations[1] - i - 1, :] /= i / overlap_size
+        volume[:, :, max_locations[2] - i - 1] /= i / overlap_size
 
 def alpha_blended_stitching_all_class_2(blocks, volume, locations, min_locations, max_locations, block_size, overlap_size, class_num):
     mask_block = torch.ones(block_size, block_size, block_size)
