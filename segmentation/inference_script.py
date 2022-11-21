@@ -10,6 +10,7 @@ if __name__=='__main__':
     parser.add_argument('output_dir_path', type=str, help='Output path for inference')
     parser.add_argument('-v', type=bool, default=True, help='Output the process status.')
     parser.add_argument('-c', type=bool, default=False, help='Clean the output directory and remove temporary files.')
+    parser.add_argument('-m', nargs='?', default='../models/four_classes_model.ckpt', help='Model path')
     args = parser.parse_args()
     
     output_dir_path = Path(args.output_dir_path)
@@ -54,7 +55,7 @@ if __name__=='__main__':
         print('Running inference.')
     files = sorted(os.listdir(output_norm_splits_dir_path))
     for f in files:
-        result = os.system('python ./test_transfer.py ' + str(output_norm_splits_dir_path) + '/' + f + ' --checkpoint ../models/four_classes_model.ckpt --output_path ' + str(output_predictions_dir_path))
+        result = os.system('python ./test_transfer.py ' + str(output_norm_splits_dir_path) + '/' + f + ' --checkpoint ' + args.m + ' --output_path ' + str(output_predictions_dir_path))
         if result != 0:
             print('Error: Failed to run inference on chunk ' + f)
             exit(1)
