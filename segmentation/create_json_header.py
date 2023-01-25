@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 
 def getMRCData(file_path):
     volumeData, _ = loadSingleMrc(file_path, normalized=False, cache=False)
+
     data = {
         'file' : '',
         'size' : {
@@ -54,6 +55,19 @@ if __name__=='__main__':
         data = getMRCData(input_path)
     
     data["file"] = target_file
+
+    transferFunctionName = ''
+    if 'Background' in target_file:
+        transferFunctionName = 'tf-Background.json'
+    elif 'Spikes' in target_file:
+        transferFunctionName = 'tf-Spikes.json'
+    elif 'Membrane' in target_file:
+        transferFunctionName = 'tf-Membrane.json'
+    elif 'Inner' in target_file:
+        transferFunctionName = 'tf-Inner.json'
+    else:
+        transferFunctionName = 'tf-raw.json'
+    data['transferFunction'] = transferFunctionName
 
     target_JSON_file = target_dir + '/' + target_file[0:target_file.rindex('.')] + ".json"
 

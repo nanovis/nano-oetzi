@@ -96,7 +96,7 @@ if __name__=='__main__':
     splits_json_path = str(output_splits_dir_path) + '/splits.json'
     tile_locations_prefix = str(output_predictions_dir_path) + '/split_norm_tile_locations_'
     output_name = os.path.basename(args.input_file_path)
-    output_files_prefix = output_name[:-4] + '_predictions'
+    output_files_prefix = output_name[:-5] + '_predictions'
     result = os.system('python ./stitch.py ' + stitch_prefix + ' ' + str(output_predictions_dir_path) + '/ ' + str(output_dir_path) + '/ ' + splits_json_path + ' ' + tile_locations_prefix + ' ' + output_files_prefix)
     if result != 0:
         print('Error: Failed to stitch prediction chunks into output files.')
@@ -112,6 +112,14 @@ if __name__=='__main__':
         print(f)
         if fnmatch.fnmatch(f, '*.raw'):
             os.system('python ./create_json_header.py ' + str(args.input_file_path) + ' ' + str(output_dir_path) + '/' + str(f))
+
+    # Create mean-3 filtered inverted version of the input volume
+    if args.v:
+        print('Creating mean-3 filtered inverted version of the input volume.')
+    
+    print('input: ' + str(args.input_file_path))
+    print('output: ' + str(output_dir_path) + '/' + str(output_name[:-5]) + '_mean3_inverted.raw')
+    os.system('python ./mean_filtering.py ' + str(args.input_file_path) + ' ' + str(output_dir_path) + '/' + str(output_name[:-5]) + '_mean3_inverted.raw')
 
     # Clean up
     if args.v and args.c:
