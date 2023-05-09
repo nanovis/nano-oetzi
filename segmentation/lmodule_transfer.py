@@ -9,7 +9,6 @@ import torch.nn.functional as F
 
 from iunets import iUNet
 from iunets.baseline_networks import StandardUNet
-from ranger import Ranger
 
 from torchvtk.datasets import TorchDataset, dict_collate_fn
 from torchvtk.transforms import Composite, Lambda, RandFlip, Noop, RandRot90
@@ -335,6 +334,7 @@ class iUnets3D(pl.LightningModule):
 
     def configure_optimizers(self):
         if self.hparams.opt.lower() == 'ranger':
+            from ranger import Ranger
             opt = Ranger(self.parameters(), weight_decay=self.hparams.weight_decay, eps=1e-3)
         elif self.hparams.opt.lower() == 'adam':
             opt = torch.optim.Adam(self.parameters(), weight_decay=self.hparams.weight_decay, eps=1e-3)
