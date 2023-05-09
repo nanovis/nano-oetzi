@@ -1,0 +1,7 @@
+---
+stages:
+    - build
+
+include:
+  - project: 'cbrc/helper'
+    file: '/build/build.ci.yml'
