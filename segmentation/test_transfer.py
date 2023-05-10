@@ -51,12 +51,12 @@ if __name__=='__main__':
         project='vorecem',
         name=f'{model.hparams.loss}_{run_id}',
         id=run_id,
-        offline=False,
-        log_model=True,
+        offline=True,
+        log_model=False,
         # sync_step=False
     )
 
-    wandb.init(id=run_id, project='vorecem', resume='must', name=f'{model.hparams.loss}_{run_id}')
+    # wandb.init(id=run_id, project='vorecem', resume='must', name=f'{model.hparams.loss}_{run_id}')
 
     trainer = Trainer.from_argparse_args(args,
         logger=logger,
