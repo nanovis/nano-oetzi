@@ -113,3 +113,15 @@ https://repository.kaust.edu.sa/handle/10754/676709
 ## Visualization
 The visualization pipeline is available as a WebGPU implementation in a separate repository.  
 https://github.com/nanovis/nano-oetzi-webgpu
+
+## Citation
+```bibtex
+@article{Nguyen_Bohak_2022,
+  author = {Nguyen, Ngan and Bohak, Ciril and Engel, Dominik and Mindek, Peter and Strnad, Ondrej and Wonka, Peter and Li, Sai and Ropinski, Timo and Viola, Ivan},
+  journal = {IEEE Transactions on Visualization and Computer Graphics}, 
+  title = {Finding Nano-Ötzi: Cryo-Electron Tomography Visualization Guided by Learned Segmentation}, 
+  year = {2022},
+  pages = {1-18},
+  doi = {10.1109/TVCG.2022.3186146}
+}
+```
