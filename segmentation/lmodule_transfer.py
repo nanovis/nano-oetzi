@@ -118,10 +118,11 @@ class iUnets3D(pl.LightningModule):
         if batch_idx == 0:
             pred_mask = torch.mul(pred_mask, 85.)
             targ_mask = torch.mul(targ, 85.)
-            self.logger.experiment.log({
-                'train/Predictions': wandb.Image(pred_mask[2, :, self.hparams.tile_sz // 2, :]),
-                'train/Targets': wandb.Image(targ_mask[2, :, self.hparams.tile_sz // 2, :]),
-            })
+            if self.logger:
+                self.logger.experiment.log({
+                    'train/Predictions': wandb.Image(pred_mask[2, :, self.hparams.tile_sz // 2, :]),
+                    'train/Targets': wandb.Image(targ_mask[2, :, self.hparams.tile_sz // 2, :]),
+                })
 
         return {
             'loss': loss,
@@ -163,10 +164,11 @@ class iUnets3D(pl.LightningModule):
         if batch_idx == 0:
             pred_mask = torch.mul(pred_mask, 85.)
             targ_mask = torch.mul(targ, 85.)
-            self.logger.experiment.log({
-                'valid/Predictions': wandb.Image(pred_mask[2, :, self.hparams.tile_sz // 2, :]),
-                'valid/Targets': wandb.Image(targ_mask[2, :, self.hparams.tile_sz // 2, :]),
-            })
+            if self.logger:
+                self.logger.experiment.log({
+                    'valid/Predictions': wandb.Image(pred_mask[2, :, self.hparams.tile_sz // 2, :]),
+                    'valid/Targets': wandb.Image(targ_mask[2, :, self.hparams.tile_sz // 2, :]),
+                })
 
         return {
             'loss': loss,
@@ -199,10 +201,11 @@ class iUnets3D(pl.LightningModule):
         if batch_idx == 0:
             pred_mask = torch.mul(pred_mask, 85.)
             # targ_mask = torch.mul(targ, 85.)
-            self.logger.experiment.log({
-                'test/Predictions': wandb.Image(pred_mask[0, :, self.hparams.tile_sz // 2, :]),
-                # 'test/Targets': wandb.Image(targ_mask[0, :, self.hparams.tile_sz // 2, :]),
-            })
+            if self.logger:
+                self.logger.experiment.log({
+                    'test/Predictions': wandb.Image(pred_mask[0, :, self.hparams.tile_sz // 2, :]),
+                    # 'test/Targets': wandb.Image(targ_mask[0, :, self.hparams.tile_sz // 2, :]),
+                })
 
         # self.log('test_loss', loss)
         # self.log('test_f1', test_f1)

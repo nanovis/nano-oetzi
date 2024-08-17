@@ -47,19 +47,20 @@ if __name__=='__main__':
 
     run_id = model.hparams.run_id
 
-    logger = loggers.WandbLogger(
-        project='vorecem',
-        name=f'{model.hparams.loss}_{run_id}',
-        id=run_id,
-        offline=False,
-        log_model=True,
-        # sync_step=False
-    )
-
-    wandb.init(id=run_id, project='vorecem', resume='must', name=f'{model.hparams.loss}_{run_id}')
+    # logger = loggers.WandbLogger(
+    #     project='vorecem',
+    #     name=f'{model.hparams.loss}_{run_id}',
+    #     id=run_id,
+    #     offline=False,
+    #     log_model=True,
+    #     # sync_step=False
+    # )
+    #
+    # wandb.init(id=run_id, project='vorecem', resume='must', name=f'{model.hparams.loss}_{run_id}')
 
     trainer = Trainer.from_argparse_args(args,
-        logger=logger,
+        # logger=logger,
+        logger=False,
         track_grad_norm=2,
         log_gpu_memory=True,
         profiler=True,
