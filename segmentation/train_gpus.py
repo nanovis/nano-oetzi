@@ -45,23 +45,26 @@ if __name__=='__main__':
         param_loss = params_checkpoint['loss']
         run_name = f'{param_loss}_{run_id}'
 
-    logger = loggers.WandbLogger(
-        project='vorecem',
-        name=run_name,
-        id=run_id,
-        offline=False,
-        log_model=True,
-        # sync_step=False
-    )
+    logger = False
+    ckpt_cb = True
+    if run_id:
+        logger = loggers.WandbLogger(
+            project='vorecem',
+            name=run_name,
+            id=run_id,
+            offline=False,
+            log_model=True,
+            # sync_step=False
+        )
 
-    ckpt_cb = ModelCheckpoint(
-        dirpath=f'{logger.experiment.dir}/checkpoint',
-        filename='{epoch:03d}_{val_loss:.4f}',
-        save_top_k=2,
-        verbose=True,
-        monitor='val_loss',
-        save_last=True
-    )
+        ckpt_cb = ModelCheckpoint(
+            dirpath=f'{logger.experiment.dir}/checkpoint',
+            filename='{epoch:03d}_{val_loss:.4f}',
+            save_top_k=2,
+            verbose=True,
+            monitor='val_loss',
+            save_last=True
+        )
 
     callbacks = [EarlyStopping(monitor='val_loss', min_delta=1e-3, patience=50)]
     # if not args.overfit: callbacks.append(QueueUsageLogging(train_dl.dataset))
@@ -109,11 +112,12 @@ if __name__=='__main__':
             resume_from_checkpoint=args.checkpoint
         )
 
-    trainer.logger.log_hyperparams({
-        'random_seed': args.seed,
-        'gpu_name': torch.cuda.get_device_name(0),
-        'gpu_capability': torch.cuda.get_device_capability(0)
-        }) # Log random seed
+    if logger:
+        trainer.logger.log_hyperparams({
+            'random_seed': args.seed,
+            'gpu_name': torch.cuda.get_device_name(0),
+            'gpu_capability': torch.cuda.get_device_capability(0)
+            }) # Log random seed
 
     # Fit model
     trainer.fit(model)

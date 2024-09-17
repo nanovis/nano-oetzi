@@ -101,7 +101,7 @@ class iUnets3D(pl.LightningModule):
         targ = batch['label']
         pred = self.forward(vol)
 
-        if batch_idx == 0:
+        if batch_idx == 0 and self.logger:
             self.logger.experiment.log({
                 'train/Predictions': wandb.Image(pred[0, :, self.hparams.tile_sz // 2, :]),
                 'train/Targets': wandb.Image(targ[0, :, self.hparams.tile_sz // 2, :]),
@@ -148,7 +148,7 @@ class iUnets3D(pl.LightningModule):
         targ = batch['label']
         pred = self.forward(vol)
 
-        if batch_idx == 0:
+        if batch_idx == 0 and self.logger:
             self.logger.experiment.log({
                 'valid/Predictions': wandb.Image(pred[0, :, self.hparams.tile_sz // 2, :]),
                 'valid/Targets': wandb.Image(targ[0, :, self.hparams.tile_sz // 2, :]),

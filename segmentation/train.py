@@ -1,3 +1,5 @@
+import json
+import os
 from argparse import ArgumentParser
 import random
 
@@ -22,7 +24,7 @@ if __name__=='__main__':
     parser.add_argument('--accumulate-grads', default=1, type=int, help='Gradient Accumulation to increase batch size. (Multiplicative)')
     parser.add_argument('--min_epochs', default=50, type=int, help='Minimum number of epochs.')
     parser.add_argument('--max_epochs', default=150, type=int, help='Maximum number ob epochs to train')
-    parser.add_argument('--run_id', default='test_exp', type=str, help='Run id for logger')
+    parser.add_argument('--run_id', type=str, help='Run id for logger')
     parser.add_argument('--checkpoint', default='none', type=str, help='Path to pretrained model')
 
     parser = iUnets3D.add_model_specific_args(parser)
@@ -45,23 +47,38 @@ if __name__=='__main__':
         param_model = params_checkpoint['model']
         run_name = f'{param_loss}_{run_id}'
 
-    logger = loggers.WandbLogger(
-        project='vorecem',
-        name=run_name,
-        id=run_id,
-        offline=False,
-        log_model=True,
-        # sync_step=False
-    )
+    logger = False
+    ckpt_cb = False
+    result_file = None
+    if run_id:
+        logger = loggers.WandbLogger(
+            project='vorecem',
+            name=run_name,
+            id=run_id,
+            offline=False,
+            log_model=True,
+            # sync_step=False
+        )
 
-    ckpt_cb = ModelCheckpoint(
-        dirpath=f'{logger.experiment.dir}/checkpoint',
-        filename='{epoch:03d}_{val_loss:.4f}',
-        save_top_k=2,
-        verbose=True,
-        monitor='val_loss',
-        save_last=True
-    )
+        ckpt_cb = ModelCheckpoint(
+            dirpath=f'{logger.experiment.dir}/checkpoint',
+            filename='{epoch:03d}_{val_loss:.4f}',
+            save_top_k=2,
+            verbose=True,
+            monitor='val_loss',
+            save_last=True
+        )
+    else:
+        outputPath = os.path.join(args.train, "results")
+        result_file = os.path.join(outputPath, "result.json")
+        ckpt_cb = ModelCheckpoint(
+            dirpath=outputPath,
+            filename='{epoch:03d}_{val_loss:.4f}',
+            save_top_k=2,
+            verbose=True,
+            monitor='val_loss',
+            save_last=False
+        )
 
     if args.checkpoint == 'none':
         # Setup Model, Logger, Trainer
@@ -105,14 +122,21 @@ if __name__=='__main__':
         )
 
     # Log random seed
-    trainer.logger.log_hyperparams({
-        'random_seed': args.seed,
-        'gpu_name': torch.cuda.get_device_name(0),
-        'gpu_capability': torch.cuda.get_device_capability(0)
-    })
+    if logger:
+        trainer.logger.log_hyperparams({
+            'random_seed': args.seed,
+            'gpu_name': torch.cuda.get_device_name(0),
+            'gpu_capability': torch.cuda.get_device_capability(0)
+        })
 
     # Fit model
     trainer.fit(model)
     print(f'Best model with loss of {ckpt_cb.best_model_score} saved to {ckpt_cb.best_model_path}')
-
+    if result_file is not None:
+        with open(result_file, "w") as outfile:
+            results = {
+                "best_model_path": ckpt_cb.best_model_path,
+                "best_model_loss": ckpt_cb.best_model_score.item()
+            }
+            json.dump(results, outfile, indent=2)
 
