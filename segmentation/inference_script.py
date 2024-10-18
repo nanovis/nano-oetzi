@@ -1,3 +1,4 @@
+import json
 import os
 import fnmatch
 import re
@@ -121,11 +122,44 @@ if __name__=='__main__':
     print('output: ' + str(output_dir_path) + '/' + str(output_name[:-5]) + '_mean3_inverted.raw')
     os.system('python ./mean_filtering.py ' + str(args.input_file_path) + ' ' + str(output_dir_path) + '/' + str(output_name[:-5]) + '_mean3_inverted.raw')
 
+    output = []
+
+    files = os.listdir(output_dir_path)
+    for f in files:
+        if fnmatch.fnmatch(f, '*.raw'):
+            settingsFile = Path(f).stem
+            fileDescriptor = {
+                "rawFileName": f,
+                "settingsFileName": settingsFile,
+            }
+            if '-Spikes.raw' in f:
+                fileDescriptor["name"] = "Spikes"
+                fileDescriptor["index"] = 0
+            elif '-Membrane.raw' in f:
+                fileDescriptor["name"] = "Membrane"
+                fileDescriptor["index"] = 1
+            elif '-Inner.raw' in f:
+                fileDescriptor["name"] = "Inner"
+                fileDescriptor["index"] = 2
+            elif '_mean3_inverted.raw' in f:
+                fileDescriptor["name"] = "Mean3-Inverted"
+                fileDescriptor["index"] = 3
+                fileDescriptor["rawVolumeChannel"] = 3
+            elif '-Background.raw' in f:
+                fileDescriptor["name"] = "Background"
+                fileDescriptor["index"] = 4
+            else:
+                continue
+            output.append(fileDescriptor)
+
+    with open(os.path.join(output_dir_path, "output.json"), "w") as outfile:
+        json.dump(files, outfile, indent=2)
+
     # Clean up
     if args.v and args.c:
         print('Cleaning up the temporary files.')
     if args.c:
         result = os.system('rm -rf ' + str(output_splits_dir_path))
-    if result != 0:
-        print('Error: Failed to clean up the temporary files.')
-        exit(1)
+        if result != 0:
+            print('Error: Failed to clean up the temporary files.')
+            exit(1)
