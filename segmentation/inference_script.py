@@ -130,7 +130,7 @@ if __name__=='__main__':
             settingsFile = Path(f).stem
             fileDescriptor = {
                 "rawFileName": f,
-                "settingsFileName": settingsFile,
+                "settingsFileName": settingsFile + ".json",
             }
             if '-Spikes.raw' in f:
                 fileDescriptor["name"] = "Spikes"
