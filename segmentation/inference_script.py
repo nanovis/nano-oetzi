@@ -153,7 +153,7 @@ if __name__=='__main__':
             output.append(fileDescriptor)
 
     with open(os.path.join(output_dir_path, "output.json"), "w") as outfile:
-        json.dump(files, outfile, indent=2)
+        json.dump(output, outfile, indent=2)
 
     # Clean up
     if args.v and args.c:
