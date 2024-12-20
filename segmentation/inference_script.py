@@ -144,10 +144,11 @@ if __name__=='__main__':
             elif '_mean3_inverted.raw' in f:
                 fileDescriptor["name"] = "Mean3-Inverted"
                 fileDescriptor["index"] = 3
-                fileDescriptor["rawVolumeChannel"] = 3
+                fileDescriptor["rawVolumeChannel"] = True
             elif '-Background.raw' in f:
                 fileDescriptor["name"] = "Background"
                 fileDescriptor["index"] = 4
+                fileDescriptor["background"] = True
             else:
                 continue
             output.append(fileDescriptor)
