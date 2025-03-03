@@ -4,6 +4,29 @@ import fnmatch
 import re
 from pathlib import Path
 from argparse import ArgumentParser
+import subprocess
+import sys
+
+def run_command(command):
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    for line in process.stdout:
+        sys.stdout.write(line)
+        sys.stdout.flush()
+
+    for line in process.stderr:
+        sys.stderr.write(line)
+        sys.stderr.flush()
+
+    process.wait()
+
+    if process.returncode != 0:
+        raise subprocess.CalledProcessError(process.returncode, command)
 
 if __name__=='__main__':
     parser = ArgumentParser('Run inference on volume with depth <= 512')
@@ -34,32 +57,23 @@ if __name__=='__main__':
 
 
     # Split volume into chunks of depth<=512 x 512 x 512
+    output = ""
     if args.v:
-        print('Spliting the volume into chunks.')
-    result = os.system('python ./split.py ' + args.input_file_path + ' ' + str(output_splits_dir_path))
-    if result != 0:
-        print('Error: Failed to split volume.')
-        exit(1)
-
+        print('Spliting the volume into chunks.')  
+    run_command(['python', './split.py', args.input_file_path, str(output_splits_dir_path)])
     
     # Check and normalize the chunk files
     if args.v:
-        print('Checking and normalizing the chunks.')
-    result = os.system('python ./check_data.py ' + str(output_splits_dir_path) + ' ' + str(output_norm_splits_dir_path))
-    if result != 0:
-        print('Error: Failed to check and normalize the chunks.')
-        exit(1)
-
+        print('Checking and normalizing the chunks.')        
+    run_command(['python', './check_data.py', str(output_splits_dir_path), str(output_norm_splits_dir_path)])
 
     # Run inference on chunks
     if args.v:
         print('Running inference.')
     files = sorted(os.listdir(output_norm_splits_dir_path))
+    print("M", args.m)
     for f in files:
-        result = os.system('python ./test_transfer.py ' + str(output_norm_splits_dir_path) + '/' + f + ' --checkpoint ' + args.m + ' --output_path ' + str(output_predictions_dir_path))
-        if result != 0:
-            print('Error: Failed to run inference on chunk ' + f)
-            exit(1)
+        run_command(['python', './test_transfer.py', str(output_norm_splits_dir_path) + '/' + f, '--checkpoint', args.m, '--output_path', str(output_predictions_dir_path)])
 
     
     # Rename files to match the needed name pattern
@@ -75,19 +89,13 @@ if __name__=='__main__':
     v = re.search(r"0", f)
     input_pattern = f[:v.start()] + '?' + f[v.start()+1:]
     output_pattern = f[:v.start()] + f[v.start()+2:-3] + '_?.pt'
-    result = os.system('python ./rename_files.py ' + str(output_predictions_dir_path) + '/ ' + input_pattern + ' ' + output_pattern)
-    if result != 0:
-        print('Error: Failed to rename the chunk files.')
-        exit(1)
+    run_command(['python', './rename_files.py', str(output_predictions_dir_path) + '/', input_pattern, output_pattern])
 
     f = selected_files[1]
     v = re.search(r"0", f)
     input_pattern = f[:v.start()] + '?' + f[v.start()+1:]
     output_pattern = f[:v.start()] + f[v.start()+2:-3] + '_?.pt'
-    result = os.system('python ./rename_files.py ' + str(output_predictions_dir_path) + '/ ' + input_pattern + ' ' + output_pattern)
-    if result != 0:
-        print('Error: Failed to rename the chunk files.')
-        exit(1)
+    run_command(['python', './rename_files.py', str(output_predictions_dir_path) + '/', input_pattern, output_pattern])
 
 
     # Stitch chunks into output volumes
@@ -98,11 +106,7 @@ if __name__=='__main__':
     tile_locations_prefix = str(output_predictions_dir_path) + '/split_norm_tile_locations_'
     output_name = os.path.basename(args.input_file_path)
     output_files_prefix = output_name[:-5] + '_predictions'
-    result = os.system('python ./stitch.py ' + stitch_prefix + ' ' + str(output_predictions_dir_path) + '/ ' + str(output_dir_path) + '/ ' + splits_json_path + ' ' + tile_locations_prefix + ' ' + output_files_prefix)
-    if result != 0:
-        print('Error: Failed to stitch prediction chunks into output files.')
-        exit(1)
-
+    run_command(['python', './stitch.py', stitch_prefix, str(output_predictions_dir_path) + '/', str(output_dir_path) + '/', splits_json_path, tile_locations_prefix, output_files_prefix])
 
     # Create JSON header for output volume files
     if args.v:
@@ -110,17 +114,17 @@ if __name__=='__main__':
     
     files = sorted(os.listdir(output_dir_path))
     for f in files:
-        print(f)
+        if args.v:
+            print(f)
         if fnmatch.fnmatch(f, '*.raw'):
-            os.system('python ./create_json_header.py ' + str(args.input_file_path) + ' ' + str(output_dir_path) + '/' + str(f))
+            run_command(['python', './create_json_header.py', str(args.input_file_path), str(output_dir_path) + '/' + str(f)])
 
     # Create mean-3 filtered inverted version of the input volume
     if args.v:
         print('Creating mean-3 filtered inverted version of the input volume.')
-    
-    print('input: ' + str(args.input_file_path))
-    print('output: ' + str(output_dir_path) + '/' + str(output_name[:-5]) + '_mean3_inverted.raw')
-    os.system('python ./mean_filtering.py ' + str(args.input_file_path) + ' ' + str(output_dir_path) + '/' + str(output_name[:-5]) + '_mean3_inverted.raw')
+        print('input: ' + str(args.input_file_path))
+        print('output: ' + str(output_dir_path) + '/' + str(output_name[:-5]) + '_mean3_inverted.raw')
+    run_command(['python', './mean_filtering.py', str(args.input_file_path), str(output_dir_path) + '/' + str(output_name[:-5]) + '_mean3_inverted.raw'])
 
     output = []
 
@@ -163,4 +167,3 @@ if __name__=='__main__':
         result = os.system('rm -rf ' + str(output_splits_dir_path))
         if result != 0:
             print('Error: Failed to clean up the temporary files.')
-            exit(1)

@@ -25,8 +25,7 @@ def loadJSONVolume(filename):
     volumeFile = open(volumeFilePath)
     
     if jsonData['usedBits'] != 8:
-        print("Unsupported data format!")
-        exit()
+        raise Exception("Unsupported data format!")
 
     npData = np.fromfile(volumeFile, dtype=np.uint8, count=jsonData['size']['x'] * jsonData['size']['y'] * jsonData['size']['z'])
     npData = np.reshape(npData, [jsonData['size']['z'], jsonData['size']['y'], jsonData['size']['x']])
