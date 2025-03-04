@@ -112,13 +112,6 @@ if __name__=='__main__':
     if args.v:
         print('Creating JSON header files for output volumes.')
     
-    files = sorted(os.listdir(output_dir_path))
-    for f in files:
-        if args.v:
-            print(f)
-        if fnmatch.fnmatch(f, '*.raw'):
-            run_command(['python', './create_json_header.py', str(args.input_file_path), str(output_dir_path) + '/' + str(f)])
-
     # Create mean-3 filtered inverted version of the input volume
     if args.v:
         print('Creating mean-3 filtered inverted version of the input volume.')

@@ -53,8 +53,7 @@ Our volumes were to big to use them for training as a whole. We needed to split 
 segmentation/split.py                       # Script for splitting data into 9 chunks
 segmentation/check_data.py                  # Checks the data consistency and normalizes the chunks
 segmentation/rename_files.py                # Script for batch renaming chunk files and prepare them for stitching
-segmentation/stitch.py                      # Script for stiching chunks into full volume
-segmentation/create_json_header.py          # Script for creating JSON header files for the output RAW files containing volume properties
+segmentation/stitch.py                      # Script for stiching chunks into full volume.
 
 conda_env.yaml                              # Docs listing the necessary py packages to run these scripts.
 ```

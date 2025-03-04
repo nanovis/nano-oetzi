@@ -9,12 +9,12 @@ from argparse import ArgumentParser
 
 from Utils.io import loadSingleMrc, loadJSONVolume
 
-def meanFilter(volumeData, output_file, filter_size):
+def meanFilter(volume_data, output_file, filter_size):
     # mean 3 filter kernel
     kernel = np.ones((filter_size, filter_size, filter_size), dtype=np.uint8) / (filter_size ** 3)
 
     # apply filter
-    filtered = scipy.ndimage.convolve(volumeData, kernel, mode='nearest')
+    filtered = scipy.ndimage.convolve(volume_data, kernel, mode='nearest')
 
     # invert values
     filtered = 255 - filtered
@@ -26,9 +26,9 @@ def meanFilter(volumeData, output_file, filter_size):
     jsonData = {
         'file' : Path(output_file).name,
         'size' : {
-            'x' : volumeData.shape[2],
-            'y' : volumeData.shape[1],
-            'z' : volumeData.shape[0]
+            'x' : volume_data.shape[2],
+            'y' : volume_data.shape[1],
+            'z' : volume_data.shape[0]
         },
         'ratio' : {
             'x' : 1.0,
@@ -38,7 +38,7 @@ def meanFilter(volumeData, output_file, filter_size):
         'bytesPerVoxel': 1,
         'usedBits': 8,
         'skipBytes': 0,
-        'isLittleEndian': volumeData.dtype.byteorder == '|' or volumeData.dtype.byteorder == '<' or (volumeData.dtype.byteorder == '=' and sys.byteorder == 'little'),
+        'isLittleEndian': volume_data.dtype.byteorder == '|' or volume_data.dtype.byteorder == '<' or (volume_data.dtype.byteorder == '=' and sys.byteorder == 'little'),
         'isSigned': False,
         'addValue': 0
     }
@@ -56,8 +56,8 @@ if __name__=='__main__':
     args = parser.parse_args()
     
     if args.input_file.endswith(".json") or args.input_file.endswith(".JSON"):
-        volumeData = loadJSONVolume(args.input_file, convertToUint8=True)
+        volume_data = loadJSONVolume(args.input_file, convertToUint8=True)
     elif args.input_file.endswith(".mrc"):
-        volumeData, _ = loadSingleMrc(args.input_file, convertToUint8=True)
+        volume_data, _ = loadSingleMrc(args.input_file, convertToUint8=True)
 
-    meanFilter(volumeData, args.output_file, args.filter_size)
+    meanFilter(volume_data, args.output_file, args.filter_size)

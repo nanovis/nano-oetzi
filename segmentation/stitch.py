@@ -4,12 +4,41 @@ import os
 import json
 import torch
 import numpy as np
+import sys
 
 import Utils.stitching_all_class as st
 
 from pathlib import Path
 from argparse import ArgumentParser
 
+def createJsonHeader(volume_data, file_path, transferFunctionName):
+    file_name = os.path.basename(file_path)
+    file_dir = os.path.dirname(file_path)
+    file_stem = Path(file_name).stem
+
+    jsonData = {
+        'file' : file_name,
+        'size' : {
+            'x' : volume_data.shape[2],
+            'y' : volume_data.shape[1],
+            'z' : volume_data.shape[0]
+        },
+        'ratio' : {
+            'x' : 1.0,
+            'y' : 1.0,
+            'z' : 1.0
+        },
+        'bytesPerVoxel': 1,
+        'usedBits': 8,
+        'skipBytes': 0,
+        'isLittleEndian': sys.byteorder == 'little',
+        'isSigned': False,
+        'addValue': 0
+    }
+    
+    with open(file_dir + '/' + file_stem + ".json", 'w') as f:
+        json.dump(jsonData, f, indent=4)
+    
 
 def stitchVolumes(prefix, exp_path, output_path, json_file, tile_locations_file, output_prefix):
     # json_file_path = exp_path + json_file
@@ -130,15 +159,19 @@ def stitchVolumes(prefix, exp_path, output_path, json_file, tile_locations_file,
 
     filename = output_path + output_prefix + '-Background.raw'
     st.save_to_binary_file(volume_background, filename)
+    createJsonHeader(volume_background, filename, 'tf-Background.json')
 
     filename = output_path + output_prefix + '-Membrane.raw'
     st.save_to_binary_file(volume_membrane, filename)
+    createJsonHeader(volume_membrane, filename, 'tf-Membrane.json')
 
     filename = output_path + output_prefix + '-Spikes.raw'
     st.save_to_binary_file(volume_spikes, filename)
+    createJsonHeader(volume_spikes, filename, 'tf-Spikes.json')
 
     filename = output_path + output_prefix + '-Inner.raw'
     st.save_to_binary_file(volume_inner, filename)
+    createJsonHeader(volume_inner, filename, 'tf-Inner.json')
 
 
 if __name__=='__main__':
