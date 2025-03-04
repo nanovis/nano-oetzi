@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from Utils.io import loadSingleMrc
+from Utils.io import loadSingleMrc, loadJSONVolume
 
 from pathlib import Path
 from argparse import ArgumentParser
@@ -14,26 +14,6 @@ def showTensor(aTensor):
     plt.imshow(aTensor.numpy())
     plt.colorbar()
     plt.show()
-
-def loadJSONVolume(filename):
-    jsonFile = open(filename)
-    jsonData = json.load(jsonFile)
-
-    volumeFilePath = os.path.dirname(filename) + '//' + jsonData['file']
-    print('Loading volume: ' + volumeFilePath)
-
-    volumeFile = open(volumeFilePath)
-    
-    if jsonData['usedBits'] != 8:
-        raise Exception("Unsupported data format!")
-
-    npData = np.fromfile(volumeFile, dtype=np.uint8, count=jsonData['size']['x'] * jsonData['size']['y'] * jsonData['size']['z'])
-    npData = np.reshape(npData, [jsonData['size']['z'], jsonData['size']['y'], jsonData['size']['x']])
-    
-    tData = torch.from_numpy(npData)
-    # showTensor(tData[128 ,:,:])
-    
-    return tData
 
 def splitVolume(volumeData, save_dir, splitX=0, splitY=512, splitZ=512):
     if splitX == 0:

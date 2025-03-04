@@ -2,28 +2,19 @@ import numpy as np
 import json
 import scipy
 import scipy.ndimage
+import sys
 
 from pathlib import Path
 from argparse import ArgumentParser
 
+from Utils.io import loadSingleMrc, loadJSONVolume
 
-def meanFilter(input_file, output_file, filter_size):
-    # Read input file
-    jsonFile = open(input_file)
-    jsonData = json.load(jsonFile)
-
-    # read raw file
-    rawFile = open(str(Path(input_file).parent) + '/' + jsonData["file"])
-    # transform to numpy array
-    raw = np.fromfile(rawFile, dtype=np.uint8)
-    # reshape to 3D array
-    raw = raw.reshape((jsonData["size"]["z"], jsonData["size"]["y"], jsonData["size"]["x"]))
-
+def meanFilter(volumeData, output_file, filter_size):
     # mean 3 filter kernel
     kernel = np.ones((filter_size, filter_size, filter_size), dtype=np.uint8) / (filter_size ** 3)
 
     # apply filter
-    filtered = scipy.ndimage.convolve(raw, kernel, mode='nearest')
+    filtered = scipy.ndimage.convolve(volumeData, kernel, mode='nearest')
 
     # invert values
     filtered = 255 - filtered
@@ -32,7 +23,26 @@ def meanFilter(input_file, output_file, filter_size):
     filtered.tofile(output_file, format='uint8')
 
     # create json header file
-    jsonData["file"] = Path(output_file).name
+    jsonData = {
+        'file' : Path(output_file).name,
+        'size' : {
+            'x' : volumeData.shape[2],
+            'y' : volumeData.shape[1],
+            'z' : volumeData.shape[0]
+        },
+        'ratio' : {
+            'x' : 1.0,
+            'y' : 1.0,
+            'z' : 1.0
+        },
+        'bytesPerVoxel': 1,
+        'usedBits': 8,
+        'skipBytes': 0,
+        'isLittleEndian': volumeData.dtype.byteorder == '|' or volumeData.dtype.byteorder == '<' or (volumeData.dtype.byteorder == '=' and sys.byteorder == 'little'),
+        'isSigned': False,
+        'addValue': 0
+    }
+    
     with open(str(Path(output_file).parent) + '/' + Path(output_file).name[:-3] + 'json', "w") as jsonOut:
         jsonOut.write(json.dumps(jsonData, indent=4))
     
@@ -44,5 +54,10 @@ if __name__=='__main__':
     parser.add_argument('output_file', type=str, help='Output volume filename')
     parser.add_argument('filter_size', type=int, default=3, nargs='?', help='Filter size')
     args = parser.parse_args()
+    
+    if args.input_file.endswith(".json") or args.input_file.endswith(".JSON"):
+        volumeData = loadJSONVolume(args.input_file, convertToUint8=True)
+    elif args.input_file.endswith(".mrc"):
+        volumeData, _ = loadSingleMrc(args.input_file, convertToUint8=True)
 
-    meanFilter(args.input_file, args.output_file, args.filter_size)
+    meanFilter(volumeData, args.output_file, args.filter_size)

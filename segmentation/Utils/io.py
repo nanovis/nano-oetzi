@@ -2,6 +2,8 @@ import json
 import torch
 import mrcfile
 import numpy as np
+import os
+import sys
 
 from pathlib import Path
 from .common import normalizeVol
@@ -150,7 +152,7 @@ def loadMrc(vol_path, normalized=True, cache=True):
     return vol_data, phys_dims
 
 
-def loadSingleMrc(vol_path, normalized=True, cache=True):
+def loadSingleMrc(vol_path, normalized=True, cache=True, convertToUint8=False):
     """
     Loads single mrc file
     
@@ -172,10 +174,14 @@ def loadSingleMrc(vol_path, normalized=True, cache=True):
         phys_dims = np.array([mrc.header.cella.x.item(),
                                 mrc.header.cella.y.item(),
                                 mrc.header.cella.z.item()])
-
-    if normalized:
+        
+    if normalized or (convertToUint8 and vol_data.dtype != np.uint8):
         vol_data = normalizeVol(vol_data)
 
+    if convertToUint8 and vol_data.dtype != np.uint8:
+        vol_data *= 255
+        vol_data = vol_data.astype(np.uint8, copy=False)
+                
     return vol_data, phys_dims
 
 def loadSegmented(vol_path):
@@ -229,6 +235,67 @@ def loadSegmented(vol_path):
     foreground = normalizeVol(foreground)
 
     return foreground
+
+def loadJSONVolume(filename, convertToUint8=False):
+    jsonFile = open(filename)
+    jsonData = json.load(jsonFile)
+
+    volumeFilePath = os.path.dirname(filename) + '//' + jsonData['file']
+    print('Loading volume: ' + volumeFilePath)
+
+    volumeFile = open(volumeFilePath)
+    
+    if "isSigned" not in jsonData:
+        raise Exception("JSON description is missing the 'isSigned' field!")
+    if "usedBits" not in jsonData:
+        raise Exception("JSON description is missing the 'usedBits' field!")
+    if jsonData['usedBits'] > 8 and "isLittleEndian" not in jsonData:
+        raise Exception("JSON description is missing the 'isLittleEndian' field!")
+        
+    if jsonData['usedBits'] == 8:
+        if jsonData['isSigned']:
+            datatype = np.int8
+        else:
+            datatype = np.uint8
+    elif jsonData['usedBits'] == 16:
+        if jsonData['isSigned']:
+            datatype = np.int16
+        else:
+            datatype = np.uint16
+    elif jsonData['usedBits'] == 32:
+        if jsonData['isSigned']:
+            datatype = np.int32
+        else:
+            datatype = np.uint32
+    elif jsonData['usedBits'] == 64:
+        if jsonData['isSigned']:
+            datatype = np.int64
+        else:
+            datatype = np.uint64
+    else:
+        raise Exception("Unsupported data format!")
+    
+    full_datatype = np.dtype(datatype)
+    if jsonData['usedBits'] > 8:
+        byte_order = '<' if jsonData["isLittleEndian"] else '>'
+        full_datatype = np.dtype(byte_order + full_datatype.char)
+
+    npData = np.fromfile(volumeFile, dtype=full_datatype, count=jsonData['size']['x'] * jsonData['size']['y'] * jsonData['size']['z'])
+    npData = np.reshape(npData, [jsonData['size']['z'], jsonData['size']['y'], jsonData['size']['x']])
+    
+    if jsonData['usedBits'] > 8 and ((jsonData["isLittleEndian"] and sys.byteorder == 'big') or (not jsonData["isLittleEndian"] and sys.byteorder == 'little')):
+        print(f"Data not in native byte order ({sys.byteorder}), converting...")
+        npData = npData.newbyteorder().byteswap(inplace=True)
+    
+    if convertToUint8 and datatype != np.uint8:
+        min_val = np.min(npData)
+        max_val = np.max(npData)
+
+        npData = (npData - min_val) / (max_val - min_val) * 255
+        npData = npData.astype(np.uint8, copy=False)
+        
+    return npData
+
 
 def saveToBinaryFileUint8(volume, filename):
     """
