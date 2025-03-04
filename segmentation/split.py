@@ -18,6 +18,13 @@ def showTensor(aTensor):
 def splitVolume(volumeData, save_dir, splitX=0, splitY=512, splitZ=512):
     if splitX == 0:
         splitX = volumeData.size()[0]
+        
+    if splitX > volumeData.size()[0]:
+        splitX = volumeData.size()[0]
+    if splitY > volumeData.size()[1]:
+        splitY = volumeData.size()[1]
+    if splitZ > volumeData.size()[2]:
+        splitZ = volumeData.size()[2]
 
     numX = int(volumeData.size()[0] / splitX)
     numY = int(volumeData.size()[1] / splitY)
@@ -48,7 +55,7 @@ def splitVolume(volumeData, save_dir, splitX=0, splitY=512, splitZ=512):
         overlapZ = int((numZ * splitZ - volumeData.size()[2]) / (numZ - 1))
     else:
         overlapZ = 0
-
+    
     # print (str(numX) + ' ' + str(numY) + ' ' + str(numZ))
     print (str(overlapX) + ' ' + str(overlapY) + ' ' + str(overlapZ))
     overlap = [overlapX, overlapY, overlapZ]
@@ -56,20 +63,10 @@ def splitVolume(volumeData, save_dir, splitX=0, splitY=512, splitZ=512):
     startX = 0
     startY = 0
     startZ = 0
-    if volumeData.shape[0] <= splitX:
-        endX = volumeData.shape[0] - 1
-    else:
-        endX = splitX - 1
     
-    if volumeData.shape[1] <= splitY:
-        endY = volumeData.shape[1] - 1
-    else:
-        endY = splitY - 1
-    
-    if volumeData.shape[2] <= splitZ:
-        endZ = volumeData.shape[2] - 1
-    else:
-        endZ = splitZ - 1
+    endX = splitX - 1
+    endY = splitY - 1
+    endZ = splitZ - 1
 
     tile = 0
     split_coords = []
