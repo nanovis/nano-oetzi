@@ -152,11 +152,6 @@ def stitchVolumes(prefix, exp_path, output_path, json_file, tile_locations_file,
 
     # st.display_volume_slice_comparison_all_class(volume_background, volume_membrane, volume_spikes, volume_inner, 128)
 
-    volume_background = torch.flip(volume_background, [1])
-    volume_membrane = torch.flip(volume_membrane, [1])
-    volume_spikes = torch.flip(volume_spikes, [1])
-    volume_inner = torch.flip(volume_inner, [1])
-
     filename = output_path + output_prefix + '-Background.raw'
     st.save_to_binary_file(volume_background, filename)
     createJsonHeader(volume_background, filename, 'tf-Background.json')
