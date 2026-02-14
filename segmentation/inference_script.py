@@ -35,6 +35,7 @@ if __name__=='__main__':
     parser.add_argument('-v', type=bool, default=True, help='Output the process status.')
     parser.add_argument('-c', type=bool, default=False, help='Clean the output directory and remove temporary files.')
     parser.add_argument('-m', nargs='?', default='../models/four_classes_model.ckpt', help='Model path')
+    parser.add_argument('--gpu', type=int, default=None, help='GPU to use for inference')
     args = parser.parse_args()
     
     output_dir_path = Path(args.output_dir_path)
@@ -73,7 +74,10 @@ if __name__=='__main__':
     files = sorted(os.listdir(output_norm_splits_dir_path))
     print("M", args.m)
     for f in files:
-        run_command(['python', './test_transfer.py', str(output_norm_splits_dir_path) + '/' + f, '--checkpoint', args.m, '--output_path', str(output_predictions_dir_path)])
+        command = ['python', './test_transfer.py', str(output_norm_splits_dir_path) + '/' + f, '--checkpoint', args.m, '--output_path', str(output_predictions_dir_path)]
+        if args.gpu is not None:
+            command += ['--gpu', str(args.gpu)]
+        run_command(command)
 
     
     # Rename files to match the needed name pattern

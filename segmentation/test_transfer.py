@@ -26,6 +26,7 @@ if __name__=='__main__':
     parser.add_argument('--seed', default=None, type=int, help='Random Seed')
     parser.add_argument('--wandb', default=False, type=bool, help='Wandb logging')
     parser.add_argument('--output_path', type=str, default='', help='Output path of inference')
+    parser.add_argument('--gpu', type=int, default=None, help='GPU to use for inference')
 
     parser = iUnets3D.add_model_specific_args(parser)
     args = parser.parse_args()
@@ -46,6 +47,10 @@ if __name__=='__main__':
     model.set_additional_attribute('output_path', args.output_path)
 
     run_id = model.hparams.run_id
+    
+    gpus = 1
+    if args.gpu is not None:
+        gpus = [args.gpu]
 
     # logger = loggers.WandbLogger(
     #     project='vorecem',
@@ -64,7 +69,7 @@ if __name__=='__main__':
         track_grad_norm=2,
         log_gpu_memory=True,
         profiler=True,
-        gpus=1,
+        gpus=gpus,
     )
 
     # Testing
